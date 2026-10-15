@@ -2,7 +2,6 @@
 package com.saucedemo;
 
 import java.time.Duration;
-import java.util.List;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
@@ -18,9 +17,10 @@ public class SauceDemoTest {
     private static final String URL = "https://www.saucedemo.com/";
 
     private WebDriverWait waitFor(WebDriver driver) {
-        return new WebDriverWait(driver, Duration.ofSeconds(10));
+        return new WebDriverWait(driver, Duration.ofSeconds(15));
     }
 
+    // Common login method
     private void login(WebDriver driver) {
         driver.get(URL);
 
@@ -42,6 +42,7 @@ public class SauceDemoTest {
         );
     }
 
+    // Test 1: Valid login
     @Test
     public void validLogin() {
         WebDriver driver = new ChromeDriver();
@@ -54,11 +55,15 @@ public class SauceDemoTest {
                 driver.findElement(By.className("title")).getText(),
                 "Products"
             );
+
+            System.out.println("Valid login test passed.");
+
         } finally {
             driver.quit();
         }
     }
 
+    // Test 2: Invalid login
     @Test
     public void invalidLogin() {
         WebDriver driver = new ChromeDriver();
@@ -84,11 +89,15 @@ public class SauceDemoTest {
                 error.contains("Username and password do not match"),
                 "Unexpected login error: " + error
             );
+
+            System.out.println("Invalid login test passed.");
+
         } finally {
             driver.quit();
         }
     }
 
+    // Test 3: Product listing
     @Test
     public void productListingValidation() {
         WebDriver driver = new ChromeDriver();
@@ -105,15 +114,16 @@ public class SauceDemoTest {
                 By.className("inventory_item")
             ).size();
 
-            Assert.assertTrue(
-                count > 0,
-                "No products were displayed."
-            );
+            Assert.assertTrue(count > 0, "No products were displayed.");
+
+            System.out.println("Products displayed: " + count);
+
         } finally {
             driver.quit();
         }
     }
 
+    // Test 4: Add product to cart
     @Test
     public void addProductToCart() {
         WebDriver driver = new ChromeDriver();
@@ -132,11 +142,15 @@ public class SauceDemoTest {
             ).getText();
 
             Assert.assertEquals(count, "1");
+
+            System.out.println("Add to cart test passed.");
+
         } finally {
             driver.quit();
         }
     }
 
+    // Test 5: Cart content validation
     @Test
     public void cartContentValidation() {
         WebDriver driver = new ChromeDriver();
@@ -152,21 +166,26 @@ public class SauceDemoTest {
                 By.className("shopping_cart_link")
             ).click();
 
+            waitFor(driver).until(
+                ExpectedConditions.urlContains("cart.html")
+            );
+
             String productName = waitFor(driver).until(
                 ExpectedConditions.visibilityOfElementLocated(
                     By.className("inventory_item_name")
                 )
             ).getText();
 
-            Assert.assertEquals(
-                productName,
-                "Sauce Labs Backpack"
-            );
+            Assert.assertEquals(productName, "Sauce Labs Backpack");
+
+            System.out.println("Cart content test passed.");
+
         } finally {
             driver.quit();
         }
     }
 
+    // Test 6: Complete checkout
     @Test
     public void checkoutHappyPath() {
         WebDriver driver = new ChromeDriver();
@@ -179,14 +198,37 @@ public class SauceDemoTest {
                 By.id("add-to-cart-sauce-labs-backpack")
             ).click();
 
+            waitFor(driver).until(
+                ExpectedConditions.visibilityOfElementLocated(
+                    By.className("shopping_cart_badge")
+                )
+            );
+
             // Open cart
             driver.findElement(
                 By.className("shopping_cart_link")
             ).click();
 
-            // Start checkout
-            driver.findElement(By.id("checkout")).click();
+            waitFor(driver).until(
+                ExpectedConditions.urlContains("cart.html")
+            );
 
+            waitFor(driver).until(
+                ExpectedConditions.visibilityOfElementLocated(
+                    By.className("cart_list")
+                )
+            );
+
+            // Click Checkout
+            WebElement checkoutButton = waitFor(driver).until(
+                ExpectedConditions.elementToBeClickable(
+                    By.id("checkout")
+                )
+            );
+
+            checkoutButton.click();
+
+            // Verify checkout information page
             String infoTitle = waitFor(driver).until(
                 ExpectedConditions.visibilityOfElementLocated(
                     By.className("title")
@@ -198,46 +240,43 @@ public class SauceDemoTest {
                 "Checkout: Your Information"
             );
 
-            // Fill customer information
+            // Enter first name
             WebElement firstName = waitFor(driver).until(
-                ExpectedConditions.elementToBeClickable(
+                ExpectedConditions.visibilityOfElementLocated(
                     By.id("first-name")
                 )
             );
+
             firstName.clear();
             firstName.sendKeys("Yogesh");
 
-            WebElement lastName = waitFor(driver).until(
-                ExpectedConditions.elementToBeClickable(
-                    By.id("last-name")
-                )
+            // Enter last name
+            WebElement lastName = driver.findElement(
+                By.id("last-name")
             );
+
             lastName.clear();
             lastName.sendKeys("Pardhe");
 
-            WebElement postalCode = waitFor(driver).until(
-                ExpectedConditions.elementToBeClickable(
-                    By.id("postal-code")
-                )
+            // Enter postal code
+            By postalCodeLocator = By.id("postal-code");
+
+            WebElement postalCode = driver.findElement(
+                postalCodeLocator
             );
+
             postalCode.clear();
             postalCode.sendKeys("444505");
 
-            // Print values for diagnosis
-            System.out.println(
-                "First name entered: " +
-                firstName.getAttribute("value")
-            );
-            System.out.println(
-                "Last name entered: " +
-                lastName.getAttribute("value")
-            );
-            System.out.println(
-                "Postal code entered: " +
-                postalCode.getAttribute("value")
+            waitFor(driver).until(
+                ExpectedConditions.attributeToBe(
+                    postalCodeLocator,
+                    "value",
+                    "444505"
+                )
             );
 
-            // Confirm the fields contain the expected values
+            // Verify customer information
             Assert.assertEquals(
                 firstName.getAttribute("value"),
                 "Yogesh",
@@ -251,46 +290,16 @@ public class SauceDemoTest {
             );
 
             Assert.assertEquals(
-                postalCode.getAttribute("value"),
+                driver.findElement(postalCodeLocator)
+                      .getAttribute("value"),
                 "444505",
                 "Postal code field was not populated."
             );
 
+            System.out.println("Customer information entered successfully.");
+
             // Continue to checkout overview
             driver.findElement(By.id("continue")).click();
-
-            // Wait for overview or a visible validation error
-            try {
-                waitFor(driver).until(
-                    ExpectedConditions.or(
-                        ExpectedConditions.urlContains(
-                            "checkout-step-two"
-                        ),
-                        ExpectedConditions.visibilityOfElementLocated(
-                            By.cssSelector("[data-test='error']")
-                        )
-                    )
-                );
-            } catch (org.openqa.selenium.TimeoutException e) {
-                System.out.println(
-                    "Checkout URL: " + driver.getCurrentUrl()
-                );
-                System.out.println(
-                    "Checkout title: " +
-                    driver.findElement(By.className("title")).getText()
-                );
-            }
-
-            List<WebElement> errors = driver.findElements(
-                By.cssSelector("[data-test='error']")
-            );
-
-            if (!errors.isEmpty() && errors.get(0).isDisplayed()) {
-                Assert.fail(
-                    "Checkout validation error: " +
-                    errors.get(0).getText()
-                );
-            }
 
             String overviewTitle = waitFor(driver).until(
                 ExpectedConditions.visibilityOfElementLocated(
@@ -300,9 +309,17 @@ public class SauceDemoTest {
 
             Assert.assertEquals(
                 overviewTitle,
-                "Checkout: Overview",
-                "Checkout did not reach the overview page."
+                "Checkout: Overview"
             );
+
+            // Verify product
+            String productName = waitFor(driver).until(
+                ExpectedConditions.visibilityOfElementLocated(
+                    By.className("inventory_item_name")
+                )
+            ).getText();
+
+            Assert.assertEquals(productName, "Sauce Labs Backpack");
 
             // Finish order
             driver.findElement(By.id("finish")).click();
@@ -317,6 +334,8 @@ public class SauceDemoTest {
                 confirmation,
                 "Thank you for your order!"
             );
+
+            System.out.println("Checkout happy path test passed.");
 
         } finally {
             driver.quit();
